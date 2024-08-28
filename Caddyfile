@@ -86,10 +86,10 @@
 		file_server
 	}
 	route /add {
-		rate_limit 10r/m 10000 429
+		rate_limit {remote.ip} 10r/m 10000 429
 	}
 	route /api* {
-		rate_limit 10r/m 10000 429
+		rate_limit {remote.ip} 10r/m 10000 429
 	}		
 }
 
