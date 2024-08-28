@@ -8,6 +8,7 @@ RUN wget -O /data/caddy/Caddyfile https://raw.githubusercontent.com/WJQSERVER/Co
 RUN VERSION=$(curl -s https://raw.githubusercontent.com/WJQSERVER/Counter/main/VERSION) && \
     wget -O /data/counter/counter https://github.com/WJQSERVER/counter/releases/download/$VERSION/counter
 RUN wget -O /data/counter/config/config.yaml https://raw.githubusercontent.com/WJQSERVER/Counter/main/config/config.yaml
+RUN cp /data/counter/config/config.yaml /data/counter/config/config.yaml.bak
 RUN wget -O /usr/local/bin/init.sh https://raw.githubusercontent.com/WJQSERVER/Counter/main/init.sh
 RUN chmod +x /data/counter/counter
 RUN chmod +x /usr/local/bin/init.sh
