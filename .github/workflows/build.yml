@@ -24,6 +24,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: ./counter*
+          files: ./counter, ./counter.tar.gz
           tag_name: ${{ env.VERSION }}
           body: "发布版本 ${{ env.VERSION }}"
