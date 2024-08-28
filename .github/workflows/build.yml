@@ -20,10 +20,13 @@ jobs:
       - name: 打包
         run: sudo tar -czvf counter.tar.gz ./counter # 将可执行文件打包为 tar.gz
       - name: 上传至Release
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: create_release
+        uses: ncipollo/release-action@v1
         with:
-          files: ./counter, ./counter.tar.gz
-          tag_name: ${{ env.VERSION }}
-          body: "发布版本 ${{ env.VERSION }}"
+          name: ${{ env.VERSION }}
+          artifacts: ./counter.tar.gz, ./counter
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ env.VERSION }}
+          allowUpdates: true
+        env:
+          export PATH: $PATH:/usr/local/go/bin
