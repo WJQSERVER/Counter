@@ -109,7 +109,7 @@ func loadConfig() {
 		fmt.Println("Using default configuration...")
 		config = Config{
 			Port: "8080",
-			File: "./counter/counter.json",
+			File: "./count/count.json",
 		}
 		return
 	}

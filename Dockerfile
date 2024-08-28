@@ -2,7 +2,7 @@ FROM wjqserver/caddy:latest
 
 RUN mkdir -p /data/www
 RUN mkdir -p /data/counter/config
-RUN mkdir -p /data/counter/counter
+RUN mkdir -p /data/counter/count
 RUN mkdir -p /data/counter/log
 RUN wget -O /data/caddy/Caddyfile https://raw.githubusercontent.com/WJQSERVER/Counter/main/Caddyfile
 RUN VERSION=$(curl -s https://raw.githubusercontent.com/WJQSERVER/Counter/main/VERSION) && \
