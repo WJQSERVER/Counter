@@ -19,19 +19,11 @@ jobs:
         run: go build -o counter ./main.go
       - name: 打包
         run: sudo tar -czvf counter.tar.gz ./counter # 将可执行文件打包为 tar.gz
-      - name: 上传至Artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: counter
-          path: ./counter.tar.gz
       - name: 上传至Release
-        id: create_release
-        uses: ncipollo/release-action@v1
-        with:
-          name: ${{ env.VERSION }}
-          artifacts: ./counter.tar.gz, ./counter
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ env.VERSION }}
-          allowUpdates: true
+        uses: softprops/action-gh-release@v1
         env:
-          export PATH: $PATH:/usr/local/go/bin
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: ./counter*
+          tag_name: ${{ env.VERSION }}
+          body: "发布版本 ${{ env.VERSION }}"
