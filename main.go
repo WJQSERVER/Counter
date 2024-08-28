@@ -103,13 +103,13 @@ func countRequest() {
 }
 
 func loadConfig() {
-	file, err := os.Open("./config/config.yaml")
+	file, err := os.Open("/data/counter/config/config.yaml")
 	if err != nil {
 		fmt.Println("Failed to open config file:", err)
 		fmt.Println("Using default configuration...")
 		config = Config{
 			Port: "8080",
-			File: "./count/count.json",
+			File: "/data/counter/count/count.json",
 		}
 		return
 	}

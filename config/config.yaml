@@ -1,2 +1,2 @@
 port: 8080
-file: ./count/count.json
+file: /data/counter/count/count.json
