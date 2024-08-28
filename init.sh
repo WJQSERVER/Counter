@@ -5,7 +5,7 @@ if [ ! -f /data/caddy/config/Caddyfile ]; then
 fi
 
 if [ ! -f /data/counter/config/config.yaml ]; then
-    cp /data/counter/config/config.yaml.bak /data/counter/config/config.yaml
+    cp /data/counter/config.d/config.yaml /data/counter/config/config.yaml
 fi
 
 /data/caddy/caddy run --config /data/caddy/config/Caddyfile > /data/caddy/log/caddy-run.log 2>&1 &
