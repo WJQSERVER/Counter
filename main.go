@@ -3,11 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
+	"log"
 	"os"
 	"sync"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v3"
 )
 
@@ -25,88 +26,71 @@ var (
 	config  Config
 	stats   Stats
 	statsMu sync.Mutex
-	buffer  = make(chan int, 100)
 )
 
 func main() {
-	// 加载配置
 	loadConfig()
-
-	http.HandleFunc("/add", handleRequest)
-	http.HandleFunc("/api/counter", handleRead)
-	http.HandleFunc("/api/counter/daily", handleDaily)
-	http.HandleFunc("/api/counter/total", handleTotal)
-
-	// 从文件中加载统计数据
 	loadStats()
 
-	// 每10秒将缓冲区数据写入文件
-	go flushStats()
+	router := gin.Default()
 
-	// 每天0点更新每日统计数据
-	go updateDailyStats()
+	router.GET("/add", handleRequest)
+	router.GET("/api/counter", handleRead)
+	router.GET("/api/counter/daily", handleDaily)
+	router.GET("/api/counter/total", handleTotal)
 
-	http.ListenAndServe(fmt.Sprintf(":%s", config.Port), nil)
-}
+	go backgroundProcess()
 
-func handleRequest(w http.ResponseWriter, r *http.Request) {
-	// 异步统计请求
-	if r.Method == http.MethodGet && r.URL.Path == "/add" {
-		go countRequest()
+	if err := router.Run(fmt.Sprintf(":%s", config.Port)); err != nil {
+		log.Fatal("Server failed to start:", err)
 	}
-	fmt.Fprintf(w, "Request received!")
 }
 
-func handleRead(w http.ResponseWriter, r *http.Request) {
-	// 读取统计数据并返回
+func handleRequest(c *gin.Context) {
+	statsMu.Lock()
+	defer statsMu.Unlock()
+
+	today := time.Now().Format("2006-01-02")
+	stats.Total++
+	stats.Daily[today]++
+
+	c.String(200, "Request received!")
+}
+
+func handleRead(c *gin.Context) {
 	statsMu.Lock()
 	data, _ := json.Marshal(stats)
 	statsMu.Unlock()
-	fmt.Fprintf(w, string(data))
+
+	c.Data(200, "application/json", data)
 }
 
-// 读取今日统计数据
-func handleDaily(w http.ResponseWriter, r *http.Request) {
-	// 读取今日统计数据并返回
+func handleDaily(c *gin.Context) {
 	statsMu.Lock()
 	today := time.Now().Format("2006-01-02")
 	count := stats.Daily[today]
 	statsMu.Unlock()
 
-	// 增加适当的错误处理机制
-	if _, err := fmt.Fprintf(w, "%d", count); err != nil {
-		http.Error(w, "Failed to write response", http.StatusInternalServerError)
-	}
+	c.String(200, fmt.Sprintf("%d", count))
 }
 
-func handleTotal(w http.ResponseWriter, r *http.Request) {
-	// 读取总计数并返回
+func handleTotal(c *gin.Context) {
 	statsMu.Lock()
 	total := stats.Total
 	statsMu.Unlock()
 
-	// 增加适当的错误处理机制
-	if _, err := fmt.Fprintf(w, "%d", total); err != nil {
-		http.Error(w, "Failed to write response", http.StatusInternalServerError)
-	}
-}
-
-func countRequest() {
-	buffer <- 1
-
-	statsMu.Lock()
-	defer statsMu.Unlock()
-
-	today := time.Now().Format("2006-01-02") // 在锁内计算today
-	stats.Total++
-	stats.Daily[today]++
+	c.String(200, fmt.Sprintf("%d", total))
 }
 
 func loadConfig() {
-	file, err := os.Open("/data/counter/config/config.yaml")
+	configFilePath := os.Getenv("CONFIG_PATH")
+	if configFilePath == "" {
+		configFilePath = "/data/counter/config/config.yaml"
+	}
+	file, err := os.Open(configFilePath)
 	if err != nil {
-		fmt.Println("Failed to open config file:", err)
-		fmt.Println("Using default configuration...")
+		log.Println("Failed to open config file:", err)
+		log.Println("Using default configuration...")
 		config = Config{
 			Port: "8080",
 			File: "/data/counter/count/count.json",
@@ -117,8 +101,8 @@ func loadConfig() {
 
 	decoder := yaml.NewDecoder(file)
 	if err := decoder.Decode(&config); err != nil {
-		fmt.Println("Failed to decode config file:", err)
-		fmt.Println("Using default configuration...")
+		log.Println("Failed to decode config file:", err)
+		log.Println("Using default configuration...")
 		config = Config{
 			Port: "8080",
 			File: "stats.json",
@@ -150,48 +134,37 @@ func saveStats() {
 
 	file, err := os.Create(config.File)
 	if err != nil {
-		fmt.Println("Failed to create stats file:", err)
+		log.Println("Failed to create stats file:", err)
 		return
 	}
 	defer file.Close()
 
 	data, err := json.Marshal(stats)
 	if err != nil {
-		fmt.Println("Failed to marshal stats:", err)
+		log.Println("Failed to marshal stats:", err)
 		return
 	}
 	_, err = file.Write(data)
 	if err != nil {
-		fmt.Println("Failed to write stats to file:", err)
+		log.Println("Failed to write stats to file:", err)
 	}
 }
 
-func flushStats() {
-	for {
-		time.Sleep(10 * time.Second)
+func backgroundProcess() {
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
 
-		statsMu.Lock()
-		bufferLen := len(buffer)
-		for i := 0; i < bufferLen; i++ {
-			<-buffer
+	for {
+		select {
+		case <-ticker.C:
+			saveStats()
+
+		case <-time.After(time.Until(time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day()+1, 0, 0, 0, 0, time.Now().Location()))):
+			statsMu.Lock()
+			today := time.Now().Format("2006-01-02")
+			stats.Daily[today] = 0
+			statsMu.Unlock()
+			saveStats()
 		}
-		statsMu.Unlock()
-
-		saveStats()
-	}
-}
-
-func updateDailyStats() {
-	for {
-		now := time.Now()
-		next := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
-		time.Sleep(next.Sub(now))
-
-		statsMu.Lock()
-		today := time.Now().Format("2006-01-02")
-		stats.Daily[today] = 0
-		statsMu.Unlock()
-
-		saveStats()
 	}
 }
