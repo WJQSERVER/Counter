@@ -81,8 +81,7 @@
     import error_page  
     import encode
 	route / {
-		root * /data/caddy/pages/alert
-		try_files {path} /maintenance.html
+		root * /data/www
 		file_server
 	}
 	route /add {
