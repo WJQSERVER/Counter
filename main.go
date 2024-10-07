@@ -132,6 +132,13 @@ func saveStats() {
 	statsMu.Lock()
 	defer statsMu.Unlock()
 
+	// 备份旧数据
+	err := os.Rename(config.File, config.File+".bak")
+	if err != nil && !os.IsNotExist(err) {
+		log.Println("Failed to backup stats file:", err)
+		return
+	}
+
 	file, err := os.Create(config.File)
 	if err != nil {
 		log.Println("Failed to create stats file:", err)
@@ -144,9 +151,12 @@ func saveStats() {
 		log.Println("Failed to marshal stats:", err)
 		return
 	}
+
 	_, err = file.Write(data)
 	if err != nil {
 		log.Println("Failed to write stats to file:", err)
+		// 还原旧数据
+		os.Rename(config.File+".bak", config.File)
 	}
 }
 
