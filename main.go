@@ -39,6 +39,9 @@ func main() {
 	router.GET("/api/counter/daily", handleDaily)
 	router.GET("/api/counter/total", handleTotal)
 
+	// 切换至release模式
+	gin.SetMode(gin.ReleaseMode)
+
 	go backgroundProcess()
 
 	if err := router.Run(fmt.Sprintf(":%s", config.Port)); err != nil {
